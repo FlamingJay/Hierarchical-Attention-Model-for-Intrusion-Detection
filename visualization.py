@@ -1,23 +1,13 @@
 # 实现的是双层注意力机制，没有用到batchnormalization
 
 import numpy as np
-import pandas as pd
-from collections import defaultdict
-import re
-
-import sys
-import os
-
-
 from keras.layers import Dense, Input, multiply
 from keras.layers import GRU, Bidirectional, TimeDistributed, Dropout, BatchNormalization, LSTM
 from keras.models import Model
 from keras.preprocessing.sequence import TimeseriesGenerator
 from keras.optimizers import Adam
-
-from keras import backend as K
-from keras.engine.topology import Layer, InputSpec
 from Attention import AttLayer
+
 # 加载数据
 from data_processing import load_data
 train, train_label, test, test_label, name = load_data()
@@ -38,11 +28,11 @@ test = test.reshape(-1, MAX_SENT_LENGTH)
 test_label = test_label[:(81920+time_steps), ]
 # 数据集生成器   需要检查一下是否正确，主要是TimeseriesGenerator的使用情况
 train_label_ = np.insert(train_label, 0, 0, axis=0)
-test_label_ = np.insert(test_label, 0, 0, axis=0)
+test_label_ = np.insert(test_label, 0, 0, axis=0) # 23360
 train_generator = TimeseriesGenerator(train, train_label_[:-1], length=time_steps, sampling_rate=1, batch_size=batch_size)
 test_generator = TimeseriesGenerator(test, test_label_[:-1], length=time_steps, sampling_rate=1, batch_size=batch_size)
 
-
+# 构建模型
 sentence_input = Input(shape=(MAX_SENT_LENGTH, ))
 attention_probs = Dense(MAX_SENT_LENGTH, activation='softmax', name='attention_vec')(sentence_input)
 attention_mul = multiply([sentence_input, attention_probs])
@@ -52,23 +42,19 @@ sentEncoder = Model(sentence_input, attention_mul)
 print('Encoder句子summary: ')
 sentEncoder.summary()
 
-
 review_input = Input(shape=(MAX_SENTS, MAX_SENT_LENGTH))  # 文档级别输入
 review_encoder = TimeDistributed(sentEncoder)(review_input)  # 对每一个文档中的每一个句子进行句子级别的特征表示操作
 
 l_lstm_sent_0 = Bidirectional(GRU(32, return_sequences=True, activation='tanh', recurrent_dropout=0.1))(review_encoder)  # 对映射后的文档进行操作
 lstm_drop_0 = Dropout(0.5)(l_lstm_sent_0)
-
 l_lstm_sent_1 = Bidirectional(GRU(12, return_sequences=True, activation='tanh', recurrent_dropout=0.1, name='gru_2'))(lstm_drop_0)  # 对映射后的文档进行操作
 lstm_drop_1 = Dropout(0.5)(l_lstm_sent_1)
-# l_lstm_sent_2 = Bidirectional(GRU(16, return_sequences=True, activation='tanh'))(l_lstm_sent_1)  # 对映射后的文档进行操作
 
 l_att_sent = AttLayer(MAX_SENTS)(lstm_drop_1)  # 文档级别的注意力机制  64, 16, 8, 1 能到98.5%，没有dropout
 
-
 dense_2 = Dense(6, activation='relu')(l_att_sent)
-
 preds = Dense(1, activation='sigmoid')(dense_2)
+
 
 model = Model(review_input, preds)
 print('Encoder文档summary: ')
@@ -80,13 +66,14 @@ model.compile(loss='binary_crossentropy',
               metrics=['acc'])
 
 model.load_weights('./hierarchical_attention/hierarchical_test_10_for_figure.hdf5')
-# model.load_weights('./hierarchical_attention/hierarchical_10.hdf5')
 
-
-
-
-
+# 计算时间
+import time
+start = time.time()
 test_probabilities = model.predict_generator(test_generator, verbose=1)
+end = time.time()
+print("Step:{}, Time:{:.4f}".format(time_steps, (end-start)))
+
 np.save('test_predicted.npy', test_probabilities)
 
 
@@ -98,12 +85,18 @@ from sklearn.metrics import confusion_matrix, classification_report
 print(classification_report(test_label_original, test_pred))
 
 
-
-
 # normal 26, 888, anomaly 15, 1
-index = 45
+# 1， 206， 207
+# 8， 663
+# 1/0分界线是在 22,824，且这个点实际为0但是判成了0.8  2019/11/12  分界线处的特征特别有意思，值得研究
+# 规律就是，0的时候，基本都是前面一两个有状态，1的时候基本就是最后一个
+# 当然其中也有不是这样子的，还看到了一些判断错误的
+
+# 论文使用：attack 8,533
+# 论文使用：normal 22,827（过渡）
+index = 26
 x, y = test_generator[index]
-number = 686
+number = 887
 sen = x[number, :, :]
 lal = y[number]
 input_data = sen.reshape(1, MAX_SENTS, -1)
@@ -148,12 +141,13 @@ def draw_heatmap(word_att, sentence_att, xlabels, ylabels):
     ax = plt.subplot(grid[0:7, 0:8])
     # plt.plot(x,y,'ok',markersize=3,alpha=0.2)
 
-    # ax.set_yticks(range(len(ylabels)))
-    # ax.set_yticklabels(ylabels, font)
+    ax.set_yticks(range(len(ylabels)))
+    ax.set_yticklabels(ylabels, font)
     ax.set_ylabel('Feature Number', font)
     ax.set_xticks(range(len(xlabels)))
     ax.set_xticklabels(xlabels, font)
-    plt.title('Slice-based Attention Map and Feature-based Attention Map.  (Predicted: Attack.  Actual: Attack.)', font)
+    # plt.title('Slice-based Attention Map and Feature-based Attention Map.  (Predicted: Attack.  Actual: Attack.)', font)
+    plt.title('Slice-based Attention Map and Feature-based Attention Map.  (Predicted: Normal.  Actual: Normal.)', font)
     vmax=word_att[0][0]
     vmin=word_att[0][0]
     for i in word_att:

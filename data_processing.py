@@ -3,8 +3,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 def load_data():
     # Default values.
-    train_set = 'D:/Project/Hierarchical Attention Networks for Intrusion Detection/UNSW_NB15_training-set.csv'
-    test_set = 'D:/Project/Hierarchical Attention Networks for Intrusion Detection/UNSW_NB15_testing-set.csv'
+    train_set = 'F:/UNSW_NB15_training-set.csv'
+    test_set = 'F:/UNSW_NB15_testing-set.csv'
     train = pd.read_csv(train_set, index_col='id')
     test = pd.read_csv(test_set, index_col='id')
 
