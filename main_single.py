@@ -74,7 +74,7 @@ checkpoint = ModelCheckpoint(os.path.join(save_dir, filepath), monitor='val_acc'
 tbCallBack = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_grads=True,
                          write_images=True, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
 reduc_lr = ReduceLROnPlateau(monitor='val_acc', patience=10, mode='max', factor=0.2, min_delta=0.0001)
-model.fit_generator(train_generator, epochs=250, verbose=2, steps_per_epoch=168,
+model.fit_generator(train_generator, epochs=2, verbose=2, steps_per_epoch=168,
                                    callbacks=[checkpoint, tbCallBack, reduc_lr],
                                    validation_data=test_generator, shuffle=0, validation_steps=80)
 model.load_weights('./one_layer_attention/one_layer_best_model.hdf5')
