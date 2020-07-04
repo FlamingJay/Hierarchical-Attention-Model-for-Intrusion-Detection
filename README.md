@@ -25,8 +25,10 @@ We visualize the attention map shown below.
 ![include](https://github.com/FlamingJay/Hierarchical-Attention-Model-for-Intrusion-Detection/blob/master/figure/normal_2.png)
 
 
-Finally, this paper is now in the investment stage. Please contact me if u have any question or request
+Pleas cite as follows if this repository does good for you.
 
-601275571@qq.com
+Liu C, Liu Y, Yan Y, et al. An Intrusion Detection Model With Hierarchical Attention Mechanism[J]. IEEE Access, 2020, 8: 67542-67554.
+
+By the way, you can contact with me: heuwangjie@hrbeu.edu.cn
 
 Thanks a lot!
